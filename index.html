@@ -1,0 +1,412 @@
+<!DOCTYPE html>
+<html lang="id" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Odoo Entry System - Secure</title>
+    <!-- Google Identity Services -->
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = { darkMode: 'class', }
+    </script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/choices.js/public/assets/styles/choices.min.css" />
+    <style>
+        .choices__inner { background-color: transparent !important; border-radius: 0.5rem !important; border: 1px solid #d1d5db !important; min-height: 42px; color: inherit; }
+        .dark .choices__inner { border-color: #4b5563 !important; background-color: #374151 !important; color: #f3f4f6 !important; }
+        .choices__list--dropdown { z-index: 50; background-color: white !important; border-color: #d1d5db !important; }
+        .dark .choices__list--dropdown { background-color: #1f2937 !important; border-color: #4b5563 !important; }
+        .choices__list--dropdown .choices__item { color: #374151 !important; font-size: 14px; }
+        .dark .choices__list--dropdown .choices__item { color: #f3f4f6 !important; }
+        .choices__list--dropdown .choices__item--selectable.is-highlighted { background-color: #3b82f6 !important; color: white !important; }
+        .dark .choices__list--dropdown .choices__input { background-color: #374151 !important; border-bottom: 1px solid #4b5563 !important; color: white !important; }
+        .loading-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.8); z-index: 1000; justify-content: center; align-items: center; flex-direction: column; }
+        @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+        .spinning { animation: spin 1s linear infinite; }
+    </style>
+</head>
+<body class="bg-gray-50 dark:bg-gray-900 min-h-screen transition-colors duration-300 flex flex-col items-center justify-center p-4">
+
+    <!-- Loading Indicator -->
+    <div id="loading" class="loading-overlay">
+        <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mb-4"></div>
+        <p class="text-white font-medium" id="loadingText">Memproses...</p>
+    </div>
+
+    <!-- Halaman Login -->
+    <div id="loginSection" class="bg-white dark:bg-gray-800 p-8 rounded-2xl shadow-xl w-full max-w-md text-center transition-all">
+        <h1 class="text-2xl font-bold text-gray-800 dark:text-white mb-2">Login SIP Odoo</h1>
+        <p class="text-gray-500 dark:text-gray-400 mb-6">Silakan login menggunakan akun Google Anda untuk mengakses form pengajuan.</p>
+        
+        <!-- Wadah Tombol Google Login -->
+        <div id="googleBtnContainer" class="flex justify-center"></div>
+    </div>
+
+    <!-- Top Toolbar (Muncul setelah login) -->
+    <div id="topToolbar" class="hidden fixed top-4 right-4 z-50 flex gap-2 items-center">
+        <!-- Profil Pengguna -->
+        <div class="flex items-center gap-2 bg-white dark:bg-gray-800 p-1.5 pr-4 rounded-full shadow-lg border border-gray-200 dark:border-gray-700">
+            <img id="userAvatar" src="" alt="Profile" class="w-8 h-8 rounded-full border border-gray-300">
+            <span id="userNameDisplay" class="text-sm font-semibold text-gray-700 dark:text-gray-300"></span>
+        </div>
+        <!-- Tombol Logout -->
+        <button id="logoutBtn" title="Logout" class="p-2 rounded-full bg-red-50 dark:bg-red-900/30 text-red-600 shadow-lg border border-red-200 dark:border-red-800 hover:bg-red-100 transition-all">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path></svg>
+        </button>
+        <!-- Refresh & Theme Toggle -->
+        <button id="refreshCache" title="Refresh Data" class="p-2 rounded-full bg-white dark:bg-gray-800 shadow-lg border border-gray-200 dark:border-gray-700 hover:scale-110 transition-all">
+            <svg id="refreshIcon" class="w-5 h-5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h5M20 20v-5h-5M13.828 10.172a4 4 0 10-5.656 5.656m0-5.656a4 4 0 015.656-5.656"></path></svg>
+        </button>
+        <button id="themeToggle" class="p-2 rounded-full bg-white dark:bg-gray-800 shadow-lg border border-gray-200 dark:border-gray-700 hover:scale-110 transition-all">
+            <svg id="sunIcon" class="hidden w-5 h-5 text-yellow-500" fill="currentColor" viewBox="0 0 20 20"><path d="M10 2a1 1 0 011 1v1a1 1 0 11-2 0V3a1 1 0 011-1zm4 8a4 4 0 11-8 0 4 4 0 018 0zm-.464 4.95l.707.707a1 1 0 001.414-1.414l-.707-.707a1 1 0 00-1.414 1.414zm2.12-10.607a1 1 0 010 1.414l-.706.707a1 1 0 11-1.414-1.414l.707-.707a1 1 0 011.414 0zM17 11a1 1 0 100-2h-1a1 1 0 100 2h1zm-7 4a1 1 0 011 1v1a1 1 0 11-2 0v-1a1 1 0 011-1zM5.05 6.464A1 1 0 106.465 5.05l-.708-.707a1 1 0 00-1.414 1.414l.707.707zm1.414 8.486l-.707.707a1 1 0 01-1.414-1.414l.707-.707a1 1 0 011.414 1.414zM4 11a1 1 0 100-2H3a1 1 0 000 2h1z"></path></svg>
+            <svg id="moonIcon" class="w-5 h-5 text-gray-600" fill="currentColor" viewBox="0 0 20 20"><path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z"></path></svg>
+        </button>
+    </div>
+
+    <!-- Main App Container (Muncul setelah login) -->
+    <div id="appSection" class="hidden max-w-4xl mx-auto bg-white dark:bg-gray-800 rounded-2xl shadow-xl overflow-hidden p-6 md:p-10 w-full mt-12 md:mt-4">
+        <div class="border-b border-gray-100 dark:border-gray-700 pb-6 mb-8 text-center md:text-left">
+            <h1 class="text-3xl font-extrabold text-gray-800 dark:text-white">Form Pengajuan Odoo</h1>
+            <p class="text-gray-500 dark:text-gray-400 mt-2">Data disimpan langsung ke Google Sheets secara aman.</p>
+        </div>
+
+        <form id="odooForm" class="space-y-6">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <!-- User Email (Dikunci karena divalidasi dari Token) -->
+                <div class="md:col-span-2">
+                    <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1">Email Pengaju (Otomatis dari Login)</label>
+                    <input type="email" id="Email" name="Email" readonly class="block w-full bg-gray-100 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg p-3 text-gray-500 dark:text-gray-400 outline-none cursor-not-allowed">
+                </div>
+
+                <div class="flex flex-col gap-2">
+                    <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1">Vendor</label>
+                    <select name="Vendor" id="drop-Vendor" required class="block w-full" onchange="checkNew(this)"></select>
+                    <input type="text" id="new-Vendor" name="new-Vendor" placeholder="Ketik Vendor Baru..." class="hidden w-full mt-2 bg-blue-50 dark:bg-blue-900/20 border border-blue-300 rounded-lg p-2.5 dark:text-white outline-none">
+                </div>
+                
+                <div class="flex flex-col gap-2">
+                    <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1">Company</label>
+                    <select name="Company" id="drop-Company" required class="block w-full" onchange="checkNew(this)"></select>
+                    <input type="text" id="new-Company" name="new-Company" placeholder="Ketik Company Baru..." class="hidden w-full mt-2 bg-blue-50 dark:bg-blue-900/20 border border-blue-300 rounded-lg p-2.5 dark:text-white outline-none">
+                </div>
+
+                <div class="flex flex-col gap-2">
+                    <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1">Product Name</label>
+                    <select name="Product Name" id="drop-Product-Name" required class="block w-full" onchange="checkNew(this)"></select>
+                    <input type="text" id="new-Product-Name" name="new-Product-Name" placeholder="Ketik Product Baru..." class="hidden w-full mt-2 bg-blue-50 dark:bg-blue-900/20 border border-blue-300 rounded-lg p-2.5 dark:text-white outline-none">
+                </div>
+
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1">Journal</label>
+                    <select name="Journal" id="drop-Journal" required class="block w-full"></select>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1">Tax</label>
+                    <select name="Tax" id="drop-Tax" class="block w-full"></select>
+                </div>
+
+                <div class="flex flex-col gap-2">
+                    <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1">OSM/Bisnis Unit Head</label>
+                    <select name="OSM/Bisnis Unit Head" id="drop-OSM" class="block w-full" onchange="checkNew(this)"></select>
+                    <input type="text" id="new-OSM" name="new-OSM" placeholder="Ketik Nama OSM Baru..." class="hidden w-full mt-2 bg-blue-50 dark:bg-blue-900/20 border border-blue-300 rounded-lg p-2.5 dark:text-white outline-none">
+                </div>
+
+                <div class="flex flex-col gap-2">
+                    <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1">Project / Klien</label>
+                    <select name="Project / Klien" id="drop-Project" class="block w-full" onchange="checkNew(this)"></select>
+                    <input type="text" id="new-Project" name="new-Project" placeholder="Ketik Project Baru..." class="hidden w-full mt-2 bg-blue-50 dark:bg-blue-900/20 border border-blue-300 rounded-lg p-2.5 dark:text-white outline-none">
+                </div>
+
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1">Rekening</label>
+                    <input type="text" name="Rekening" required placeholder="Input No Rekening" class="block w-full bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg p-2.5 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none">
+                </div>
+
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1">Amount</label>
+                    <input type="text" id="amountDisplay" placeholder="0" required class="block w-full bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg p-2.5 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none">
+                    <input type="hidden" name="Amount" id="amountReal">
+                </div>
+
+                <div class="md:col-span-2">
+                    <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1">Reason</label>
+                    <textarea name="Reason" rows="3" required class="block w-full bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg p-2.5 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none" placeholder="Jelaskan alasan pengajuan Anda secara singkat..."></textarea>
+                </div>
+
+                <!-- File Upload -->
+                <div class="md:col-span-2">
+                    <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1">Lampiran File</label>
+                    <div id="dropZone" class="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-gray-300 dark:border-gray-600 border-dashed rounded-lg hover:border-blue-500 transition-colors cursor-pointer">
+                        <div class="space-y-1 text-center">
+                            <svg class="mx-auto h-12 w-12 text-gray-400" stroke="currentColor" fill="none" viewBox="0 0 48 48"><path d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" /></svg>
+                            <div class="flex text-sm text-gray-600 dark:text-gray-400">
+                                <label for="fileInput" class="relative cursor-pointer rounded-md font-medium text-blue-600 hover:text-blue-500">
+                                    <span>Klik untuk upload</span>
+                                    <input id="fileInput" type="file" class="sr-only">
+                                </label>
+                                <p class="pl-1">atau seret ke sini</p>
+                            </div>
+                            <p class="text-xs text-gray-500 dark:text-gray-400" id="fileNameDisplay">Maks. 10MB</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="pt-8">
+                <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 px-4 rounded-xl shadow-lg transform transition active:scale-95 focus:outline-none">
+                    Kirim Pengajuan
+                </button>
+            </div>
+        </form>
+        
+        <div id="messageBox" class="mt-6 p-4 rounded-xl hidden text-center font-medium shadow-inner"></div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/choices.js/public/assets/scripts/choices.min.js"></script>
+    <script>
+        // === KONFIGURASI PENTING ===
+        const SCRIPT_URL = "https://script.google.com/macros/s/AKfy.../exec"; 
+        const GOOGLE_CLIENT_ID = "YOUR_CLIENT_ID.apps.googleusercontent.com"; 
+        
+        // Element DOM
+        const form = document.getElementById('odooForm');
+        const loading = document.getElementById('loading');
+        const messageBox = document.getElementById('messageBox');
+        const loginSection = document.getElementById('loginSection');
+        const appSection = document.getElementById('appSection');
+        const topToolbar = document.getElementById('topToolbar');
+        const emailInput = document.getElementById('Email');
+        
+        let choiceInstances = {};
+        let currentJWT = localStorage.getItem('odoo_jwt_token');
+
+        // ==== GOOGLE IDENTITY AUTHENTICATION ====
+        window.onload = function () {
+            updateTheme();
+            
+            // Inisialisasi Google SDK
+            google.accounts.id.initialize({
+                client_id: GOOGLE_CLIENT_ID,
+                callback: handleCredentialResponse
+            });
+
+            google.accounts.id.renderButton(
+                document.getElementById("googleBtnContainer"),
+                { theme: document.documentElement.classList.contains('dark') ? "filled_black" : "outline", size: "large", width: 250 }
+            );
+
+            // Cek jika sudah login sebelumnya
+            if (currentJWT) {
+                showApp(currentJWT);
+            }
+        };
+
+        function handleCredentialResponse(response) {
+            currentJWT = response.credential;
+            localStorage.setItem('odoo_jwt_token', currentJWT);
+            showApp(currentJWT);
+        }
+
+        function showApp(token) {
+            // Decode payload JWT murni di sisi browser untuk tampilan Profile
+            const payload = JSON.parse(atob(token.split('.')[1]));
+            
+            // Set UI
+            document.getElementById('userAvatar').src = payload.picture;
+            document.getElementById('userNameDisplay').textContent = payload.name;
+            emailInput.value = payload.email; // Hanya untuk visual, backend akan mengecek ulang
+            
+            loginSection.classList.add('hidden');
+            appSection.classList.remove('hidden');
+            topToolbar.classList.remove('hidden');
+            document.body.classList.remove('justify-center', 'items-center');
+            
+            initData(); // Ambil dropdown setelah sukses login
+        }
+
+        document.getElementById('logoutBtn').onclick = () => {
+            localStorage.removeItem('odoo_jwt_token');
+            localStorage.removeItem('odoo_dropdown_cache');
+            location.reload(); // Reload halaman kembali ke state awal
+        };
+
+        // ==== APLIKASI UTAMA ====
+        function showLoading(text = "Memproses...") {
+            document.getElementById('loadingText').innerText = text;
+            loading.style.display = 'flex';
+        }
+        function hideLoading() { loading.style.display = 'none'; }
+
+        document.getElementById('fileInput').addEventListener('change', function(e) {
+            const display = document.getElementById('fileNameDisplay');
+            if(e.target.files[0]) {
+                display.textContent = "File: " + e.target.files[0].name;
+                display.classList.add("text-blue-500");
+            }
+        });
+
+        document.getElementById('refreshCache').onclick = () => {
+            document.getElementById('refreshIcon').classList.add('spinning');
+            localStorage.removeItem('odoo_dropdown_cache');
+            initData(true);
+        };
+
+        document.getElementById('amountDisplay').addEventListener('input', function(e) {
+            let value = e.target.value.replace(/\D/g, "");
+            document.getElementById('amountReal').value = value;
+            if (value === "") { e.target.value = ""; return; }
+            e.target.value = new Intl.NumberFormat('id-ID').format(value);
+        });
+
+        function updateTheme() {
+            const isDark = document.documentElement.classList.contains('dark');
+            document.getElementById('sunIcon').style.display = isDark ? 'block' : 'none';
+            document.getElementById('moonIcon').style.display = isDark ? 'none' : 'block';
+        }
+        document.getElementById('themeToggle').onclick = () => {
+            document.documentElement.classList.toggle('dark');
+            updateTheme();
+        };
+
+        function checkNew(selectEl) {
+            const idSuffix = selectEl.id.replace('drop-', '');
+            const inputNew = document.getElementById('new-' + idSuffix);
+            if (selectEl.value === "__NEW__") {
+                inputNew.classList.remove('hidden'); inputNew.required = true; inputNew.focus();
+            } else {
+                inputNew.classList.add('hidden'); inputNew.required = false; inputNew.value = "";
+            }
+        }
+
+        async function initData(isManual = false) {
+            showLoading("Mengambil data...");
+            const cache = localStorage.getItem('odoo_dropdown_cache');
+            const now = new Date().getTime();
+
+            if (cache && !isManual) {
+                const parsed = JSON.parse(cache);
+                if (now - parsed.timestamp < 10 * 60 * 1000) {
+                    renderDropdowns(parsed.data); hideLoading(); return;
+                }
+            }
+
+            try {
+                // Kirim token JWT ke backend untuk keamanan (lewat URL Parameter)
+                const response = await fetch(`${SCRIPT_URL}?action=getDropdown&token=${currentJWT}`);
+                const data = await response.json();
+                
+                if(data.error) throw new Error(data.error);
+
+                localStorage.setItem('odoo_dropdown_cache', JSON.stringify({ timestamp: now, data: data }));
+                renderDropdowns(data);
+            } catch (error) {
+                alert("Sesi login ditolak oleh server atau telah habis. " + error.message);
+                document.getElementById('logoutBtn').click(); // Auto-logout jika token invalid
+            } finally {
+                hideLoading();
+                document.getElementById('refreshIcon').classList.remove('spinning');
+            }
+        }
+
+        function renderDropdowns(dropdowns) {
+            const needsAddNew = ['Vendor', 'Company', 'Product Name', 'OSM', 'Project'];
+            const config = { 'drop-Vendor': dropdowns['Vendor'], 'drop-Company': dropdowns['Company'], 'drop-Product-Name': dropdowns['Product Name'], 'drop-Journal': dropdowns['Journal'], 'drop-Tax': dropdowns['Tax'], 'drop-OSM': dropdowns['OSM'], 'drop-Project': dropdowns['Project'] };
+
+            for (const [id, list] of Object.entries(config)) {
+                const el = document.getElementById(id);
+                if (!el) continue;
+
+                el.innerHTML = '<option value="">Cari atau pilih...</option>';
+                if (needsAddNew.some(n => id.includes(n.replace(' ', '-')))) {
+                    el.innerHTML += '<option value="__NEW__" style="font-weight:bold;">➕ TAMBAH BARU...</option>';
+                }
+
+                if (list) list.forEach(item => el.innerHTML += `<option value="${item}">${item}</option>`);
+
+                if (choiceInstances[id]) choiceInstances[id].destroy();
+                choiceInstances[id] = new Choices(el, { searchEnabled: true, itemSelectText: '', placeholder: true, shouldSort: false });
+            }
+        }
+
+        form.onsubmit = async function(e) {
+            e.preventDefault();
+            showLoading("Memverifikasi Keamanan & Mengirim...");
+            
+            const formData = new FormData(form);
+            const data = {};
+            formData.forEach((value, key) => {
+                if (value === "__NEW__") {
+                    const keyClean = key.replace('drop-', '');
+                    data[keyClean] = formData.get('new-' + keyClean);
+                } else if (!key.startsWith('new-')) {
+                    data[key] = value;
+                }
+            });
+
+            const file = document.getElementById('fileInput').files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = (ev) => {
+                    const fileData = { base64: ev.target.result.split(',')[1], mimeType: file.type, fileName: file.name };
+                    submitData(data, fileData);
+                };
+                reader.readAsDataURL(file);
+            } else {
+                submitData(data, null);
+            }
+        };
+
+        async function submitData(data, fileData) {
+            try {
+                // Sertakan token JWT di body request untuk validasi email
+                const payload = {
+                    token: currentJWT,
+                    data: data,
+                    fileData: fileData
+                };
+
+                const response = await fetch(SCRIPT_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'text/plain;charset=utf-8' }, // Tetap text/plain agar menghindari CORS Preflight
+                    body: JSON.stringify(payload)
+                });
+
+                const result = await response.json();
+
+                if (result.status === 'success') {
+                    hideLoading();
+                    messageBox.className = "mt-6 p-4 rounded-xl bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300";
+                    messageBox.innerText = "Sukses! Pengajuan terkirim dengan keamanan valid.";
+                    messageBox.classList.remove('hidden');
+                    
+                    form.reset();
+                    emailInput.value = JSON.parse(atob(currentJWT.split('.')[1])).email; // Kembalikan email
+                    document.getElementById('fileNameDisplay').textContent = "Maks. 10MB";
+                    document.getElementById('fileNameDisplay').classList.remove("text-blue-500");
+                    localStorage.removeItem('odoo_dropdown_cache'); 
+                    document.getElementById('amountDisplay').value = ""; 
+                    document.querySelectorAll('[id^="new-"]').forEach(i => i.classList.add('hidden'));
+                    for (let id in choiceInstances) { choiceInstances[id].setChoiceByValue(''); }
+                    
+                    setTimeout(() => messageBox.classList.add('hidden'), 8000);
+                } else {
+                    throw new Error(result.message);
+                }
+
+            } catch (err) {
+                hideLoading();
+                messageBox.className = "mt-6 p-4 rounded-xl bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-300";
+                messageBox.innerText = "Gagal: " + err.message;
+                messageBox.classList.remove('hidden');
+                
+                // Jika error indikasi token invalid, paksa logout
+                if(err.message.includes('Akses Ditolak')) {
+                    setTimeout(() => document.getElementById('logoutBtn').click(), 3000);
+                }
+            }
+        }
+    </script>
+</body>
+</html>
